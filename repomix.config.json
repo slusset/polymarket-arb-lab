@@ -1,0 +1,76 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "output": {
+    "filePath": "repomix-output.md",
+    "style": "markdown",
+    "parsableStyle": true,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "showLineNumbers": false,
+    "truncateBase64": true,
+    "topFilesLength": 10,
+    "tokenCountTree": false,
+    "includeEmptyDirectories": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false,
+      "includeLogs": false,
+      "includeLogsCount": 20
+    }
+  },
+  "include": [
+    "src/**/*.py",
+    "tests/**/*.py",
+    "pyproject.toml",
+    "README.md",
+    "Makefile",
+    "uv.lock",
+    "requirements*.txt",
+    "setup.cfg",
+    "setup.py",
+    "tox.ini",
+    "pytest.ini",
+    "mypy.ini",
+    "ruff.toml",
+    "ruff.yml",
+    "ruff.yaml",
+    "docs/**/*.md"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/__pycache__/**",
+      "**/*.py[cod]",
+      "**/*.pyo",
+      ".venv/**",
+      "venv/**",
+      "env/**",
+      ".tox/**",
+      ".nox/**",
+      ".pytest_cache/**",
+      ".mypy_cache/**",
+      ".ruff_cache/**",
+      ".hypothesis/**",
+      "build/**",
+      "dist/**",
+      ".eggs/**",
+      "*.egg-info/**",
+      ".idea/**",
+      ".vscode/**",
+      ".DS_Store",
+      "data/market.db"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

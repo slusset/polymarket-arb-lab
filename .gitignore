@@ -209,3 +209,5 @@ __marimo__/
 # Local scan artifacts
 market.db
 data/market.db
+data/report.md
+repomix-output.md
