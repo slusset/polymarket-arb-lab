@@ -12,6 +12,8 @@ class ApiConfig:
     timeout_s: float
     min_interval_s: float
     max_retries: int
+    start_date_min: str | None = None
+    end_date_min: str | None = None
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,14 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_str(name: str) -> str | None:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    raw = raw.strip()
+    return raw or None
+
+
 def api_config_from_env() -> ApiConfig:
     return ApiConfig(
         markets_url=os.getenv(
@@ -60,12 +70,13 @@ def api_config_from_env() -> ApiConfig:
         ),
         orderbook_url=os.getenv(
             "PM_ORDERBOOK_URL",
-            # TODO: confirm the latest public orderbook endpoint and params.
-            "https://gamma-api.polymarket.com/orderbook",
+            "https://clob.polymarket.com/book",
         ),
         timeout_s=_env_float("PM_TIMEOUT_S", 10.0),
         min_interval_s=_env_float("PM_MIN_INTERVAL_S", 0.25),
         max_retries=_env_int("PM_MAX_RETRIES", 3),
+        start_date_min=_env_str("PM_START_DATE_MIN"),
+        end_date_min=_env_str("PM_END_DATE_MIN"),
     )
 
 

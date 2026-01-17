@@ -48,6 +48,25 @@ def parse_quantities(raw: str) -> list[float]:
     return quantities
 
 
+def parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    if len(raw) == 10:
+        raw = f"{raw}T00:00:00+00:00"
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 def chunked(items: Iterable[Any], size: int) -> Iterable[list[Any]]:
     batch: list[Any] = []
     for item in items:
