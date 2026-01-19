@@ -29,10 +29,14 @@ def test_csv_universe_writer(tmp_path: Path) -> None:
     events_path = tmp_path / "events.csv"
     markets_path = tmp_path / "markets.csv"
     tokens_path = tmp_path / "tokens.csv"
+    watchlist_path = tmp_path / "watchlist.csv"
+    watchlist_future_path = tmp_path / "watchlist_future.csv"
 
     assert events_path.exists()
     assert markets_path.exists()
     assert tokens_path.exists()
+    assert watchlist_path.exists()
+    assert watchlist_future_path.exists()
 
     with events_path.open(encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
@@ -48,3 +52,13 @@ def test_csv_universe_writer(tmp_path: Path) -> None:
         rows = list(csv.DictReader(handle))
     assert len(rows) == len(snapshot.tokens)
     assert "token_id" in rows[0]
+
+    with watchlist_path.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    if rows:
+        assert "market_id" in rows[0]
+
+    with watchlist_future_path.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    if rows:
+        assert "market_id" in rows[0]

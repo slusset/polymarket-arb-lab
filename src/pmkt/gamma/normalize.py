@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from pmkt.domain.entities import Event, Market, Token
+
+LIFECYCLE_UPCOMING_NOT_TRADABLE = "UPCOMING_NOT_TRADABLE"
+LIFECYCLE_OPEN_TRADABLE = "OPEN_TRADABLE"
+LIFECYCLE_OPEN_NOT_TRADABLE = "OPEN_NOT_TRADABLE"
+LIFECYCLE_CLOSED = "CLOSED"
 
 
 def _parse_list(raw_value: Any) -> list[str]:
@@ -38,6 +44,17 @@ def _extract_items(raw_json: Any, key: str) -> list[dict[str, Any]]:
             return [item for item in raw_json[key] if isinstance(item, dict)]
         return [raw_json]
     return []
+
+
+def _parse_event_time(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _parse_tokens_from_market(
@@ -113,6 +130,27 @@ def parse_markets(raw_json: Any) -> list[Market]:
         accepting_orders = (
             bool(accepting_orders_raw) if accepting_orders_raw is not None else None
         )
+        active_raw = raw.get("active")
+        active = bool(active_raw) if active_raw is not None else None
+        closed_raw = raw.get("closed")
+        closed = bool(closed_raw) if closed_raw is not None else None
+        event_start_time = raw.get("eventStartTime") or raw.get("event_start_time")
+        lifecycle_state = ""
+        if closed is True:
+            lifecycle_state = LIFECYCLE_CLOSED
+        elif active is True and enable_order_book is True and accepting_orders is True:
+            lifecycle_state = LIFECYCLE_OPEN_TRADABLE
+        else:
+            start_time = _parse_event_time(str(event_start_time) if event_start_time else None)
+            if active is True and closed is False and start_time is not None:
+                if start_time > datetime.now(timezone.utc):
+                    lifecycle_state = LIFECYCLE_UPCOMING_NOT_TRADABLE
+                else:
+                    lifecycle_state = LIFECYCLE_OPEN_NOT_TRADABLE
+            elif active is True and closed is False:
+                lifecycle_state = LIFECYCLE_OPEN_NOT_TRADABLE
+        if not status and lifecycle_state:
+            status = lifecycle_state
         volume_raw = raw.get("volume") or raw.get("volumeNum") or raw.get("volume24hr")
         volume = float(volume_raw) if volume_raw is not None else None
         tokens = _parse_tokens_from_market(raw, outcomes, clob_token_ids)
@@ -126,6 +164,10 @@ def parse_markets(raw_json: Any) -> list[Market]:
                 tokens=tokens,
                 enable_order_book=enable_order_book,
                 accepting_orders=accepting_orders,
+                active=active,
+                closed=closed,
+                event_start_time=str(event_start_time) if event_start_time else None,
+                lifecycle_state=lifecycle_state,
                 volume=volume,
                 raw=raw,
             )

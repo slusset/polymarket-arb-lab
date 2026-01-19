@@ -21,6 +21,10 @@ class Market:
     tokens: list[Token] = field(default_factory=list)
     enable_order_book: bool | None = None
     accepting_orders: bool | None = None
+    active: bool | None = None
+    closed: bool | None = None
+    event_start_time: str | None = None
+    lifecycle_state: str = ""
     volume: float | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
