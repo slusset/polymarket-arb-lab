@@ -1,0 +1,24 @@
+### Gamma Events (default)
+GET https://gamma-api.polymarket.com/events
+Accept: application/json
+
+### Gamma Events (limit)
+GET https://gamma-api.polymarket.com/events?limit={{limit}}
+Accept: application/json
+
+### Gamma Markets (default)
+GET https://gamma-api.polymarket.com/markets
+Accept: application/json
+
+### Gamma Markets (limit)
+GET https://gamma-api.polymarket.com/markets?limit={{limit}}
+Accept: application/json
+
+### Gamma Markets (start/end date filters)
+GET https://gamma-api.polymarket.com/markets?start_date_min={{start_date_min}}&end_date_min={{end_date_min}}
+Accept: application/json
+
+# Set vars in IntelliJ HTTP client or replace directly:
+# @limit=10
+# @start_date_min=2025-01-01
+# @end_date_min=2025-12-31

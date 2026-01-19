@@ -1,0 +1,11 @@
+### CLOB Order Book (token_id required)
+# yes:
+@up_token_id = 74929939504178287313585470319969836816548026780383482089537908434192327131915
+# no:
+@down_token_id = 68907581888600109671043404359667919313160501829614001634348939354246251702388
+GET https://clob.polymarket.com/book?token_id={{down_token_id}}
+Accept: application/json
+
+# Set vars in IntelliJ HTTP client or replace directly:
+# @token_id=123456789
+# @depth=10
