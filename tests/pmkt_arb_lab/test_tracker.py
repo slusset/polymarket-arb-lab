@@ -1,4 +1,4 @@
-from polymarket_arb_lab.tracker import OpportunityTracker
+from pmkt_arb_lab.tracker import OpportunityTracker
 
 
 def test_tracker_duration() -> None:

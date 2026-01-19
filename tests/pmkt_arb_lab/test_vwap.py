@@ -1,4 +1,4 @@
-from polymarket_arb_lab.logic import vwap_for_asks
+from pmkt_arb_lab.logic import vwap_for_asks
 
 
 def test_vwap_for_asks_dict_levels() -> None:

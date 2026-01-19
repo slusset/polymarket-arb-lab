@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-from polymarket_arb_lab.logic import select_markets
-from polymarket_arb_lab.models import MarketMetadata
+from pmkt_arb_lab.logic import select_markets
+from pmkt_arb_lab.models import MarketMetadata
 
 
 def test_select_markets_closed_and_ended() -> None:

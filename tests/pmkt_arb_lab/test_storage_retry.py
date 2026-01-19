@@ -1,6 +1,6 @@
 import sqlite3
 
-from polymarket_arb_lab.storage import Storage
+from pmkt_arb_lab.storage import Storage
 
 
 def test_execute_with_retry_eventually_succeeds(tmp_path, monkeypatch) -> None:

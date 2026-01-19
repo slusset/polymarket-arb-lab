@@ -1,5 +1,5 @@
 [project]
-name = "polymarket-arb-lab"
+name = "pmkt-arb-lab"
 version = "0.1.0"
 description = "Polymarket Binary Arb Explorer (read-only research)"
 requires-python = ">=3.11"
@@ -22,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-pmarb = "polymarket_arb_lab.cli:main"
+pmarb = "pmkt_arb_lab.cli:main"
 
 [tool.ruff]
 line-length = 100

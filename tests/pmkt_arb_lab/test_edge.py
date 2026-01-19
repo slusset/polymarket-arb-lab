@@ -1,5 +1,5 @@
-from polymarket_arb_lab.logic import FeeModel, edge_for_top, is_executable
-from polymarket_arb_lab.models import OrderBookTop
+from pmkt_arb_lab.logic import FeeModel, edge_for_top, is_executable
+from pmkt_arb_lab.models import OrderBookTop
 
 
 def test_edge_for_top() -> None:

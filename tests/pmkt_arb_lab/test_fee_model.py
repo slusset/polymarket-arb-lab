@@ -1,4 +1,4 @@
-from polymarket_arb_lab.logic import FeeModel
+from pmkt_arb_lab.logic import FeeModel
 
 
 def test_fee_model_total_fee() -> None:

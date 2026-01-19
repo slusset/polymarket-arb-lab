@@ -1,4 +1,4 @@
-from polymarket_arb_lab.models import MarketMetadata
+from pmkt_arb_lab.models import MarketMetadata
 
 
 def test_parse_clob_token_ids_flat_list() -> None:

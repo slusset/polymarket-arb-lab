@@ -33,7 +33,7 @@ def outcome_token_map(row):
     return {str(outs[i]): str(toks[i]) for i in range(2)}
 
 
-path = "data/polymarket_events_10.json"
+path = "../data/polymarket_events_10.json"
 
 with open(path, "r") as f:
     events = json.load(f)          # list[dict]
