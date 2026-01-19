@@ -210,4 +210,5 @@ __marimo__/
 market.db
 data/market.db
 data/report.md
+data/*.json
 repomix-output.md
