@@ -81,6 +81,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override global log level",
     )
+
     return parser
 
 
@@ -89,9 +90,9 @@ def _resolve_quantities(raw: str) -> list[float]:
     return quantities if quantities else list(DEFAULT_QUANTITIES)
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     _setup_logging(args.log_level or "INFO")
 
     if args.command == "scan":
@@ -199,7 +200,6 @@ def main() -> None:
                 f"{str(market.yes_clob_token_id):<12} {str(market.no_clob_token_id):<12} {question}"
             )
         return
-
 
 if __name__ == "__main__":
     main()

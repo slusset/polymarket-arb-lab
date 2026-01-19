@@ -22,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-pmarb = "pmkt_arb_lab.cli:main"
+pmarb = "pmkt.cli:main"
 
 [tool.ruff]
 line-length = 100

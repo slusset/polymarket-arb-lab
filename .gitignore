@@ -211,4 +211,5 @@ market.db
 data/market.db
 data/report.md
 data/*.json
+data/snapshots/**
 repomix-output.md

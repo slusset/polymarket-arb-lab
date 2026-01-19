@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from pmkt_arb_lab.models import MarketMetadata
 
 
@@ -31,3 +34,24 @@ def test_parse_clob_token_ids_nested_json_string() -> None:
     ]
     assert market.yes_clob_token_id == market.clob_token_ids[0]
     assert market.no_clob_token_id == market.clob_token_ids[1]
+
+
+def test_parse_outcomes_and_tokens_from_gamma_fixture() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    path = repo_root / "data" / "polymarket_events_10.json"
+    with path.open(encoding="utf-8") as handle:
+        raw_events = json.load(handle)
+
+    raw_market = None
+    for raw_event in raw_events:
+        for market in raw_event.get("markets", []):
+            if market.get("outcomes") and market.get("clobTokenIds"):
+                raw_market = market
+                break
+        if raw_market is not None:
+            break
+
+    assert raw_market is not None
+    parsed = MarketMetadata.from_api(raw_market)
+    assert len(parsed.outcomes) == 2
+    assert len(parsed.clob_token_ids) == 2

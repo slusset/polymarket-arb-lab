@@ -26,6 +26,7 @@ def test_parse_tokens_from_fixture() -> None:
     markets = [market for event in events for market in event.markets]
     tokens = parse_tokens(markets)
     assert tokens
+    assert all(token.token_id for token in tokens)
 
 
 def test_market_fields_map_cleanly() -> None:
@@ -47,6 +48,15 @@ def test_market_fields_map_cleanly() -> None:
     parsed = next(market for market in markets if market.market_id == market_id)
 
     if "enableOrderBook" in raw_market:
-        assert parsed.enable_order_book is bool(raw_market["enableOrderBook"])
+        assert parsed.enable_order_book == raw_market["enableOrderBook"]
     if "acceptingOrders" in raw_market:
-        assert parsed.accepting_orders is bool(raw_market["acceptingOrders"])
+        assert parsed.accepting_orders == raw_market["acceptingOrders"]
+
+
+def test_market_outcomes_and_tokens_lengths() -> None:
+    raw_events = _load_raw_events()
+    events = parse_events(raw_events)
+    markets = [market for event in events for market in event.markets]
+
+    assert any(len(market.outcomes) == 2 for market in markets)
+    assert any(len(market.clob_token_ids) == 2 for market in markets)

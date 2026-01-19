@@ -45,19 +45,32 @@ class MarketMetadata(BaseModel):
             return [x.strip() for x in text.split(",") if x.strip()]
         return []
 
+    @staticmethod
+    def _parse_outcomes(raw_value: Any) -> list[str]:
+        if raw_value is None:
+            return []
+        if isinstance(raw_value, list):
+            return [str(item) for item in raw_value]
+        if isinstance(raw_value, str):
+            text = raw_value.strip()
+            if not text:
+                return []
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed]
+            return [item.strip() for item in text.split(",") if item.strip()]
+        return []
+
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> "MarketMetadata":
         market_id = str(data.get("id") or data.get("market_id") or "")
         title = str(data.get("question") or data.get("title") or "")
         status = str(data.get("status") or data.get("state") or "")
         outcomes_raw = data.get("outcomes") or data.get("outcome") or []
-        outcomes: list[str]
-        if isinstance(outcomes_raw, list):
-            outcomes = [str(x) for x in outcomes_raw]
-        elif isinstance(outcomes_raw, str):
-            outcomes = [x.strip() for x in outcomes_raw.split(",") if x.strip()]
-        else:
-            outcomes = []
+        outcomes = cls._parse_outcomes(outcomes_raw)
         clob_raw = data.get("clobTokenIds") or data.get("clob_token_ids")
         clob_token_ids = cls._parse_clob_token_ids(clob_raw)
         yes_token_id = None
