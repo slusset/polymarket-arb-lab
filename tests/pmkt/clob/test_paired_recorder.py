@@ -1,9 +1,10 @@
 import csv
+import json
 from decimal import Decimal
 from pathlib import Path
 
 from pmkt.clob.models import OrderBook, OrderLevel
-from pmkt.clob.paired_recorder import TradablePair, record_paired_quotes
+from pmkt.clob.paired_recorder import TradablePair, build_market_index, record_paired_quotes
 
 
 class _FakeClient:
@@ -61,3 +62,83 @@ def test_record_paired_quotes_writes_csv(tmp_path: Path) -> None:
         rows = list(csv.DictReader(handle))
     assert len(rows) == 1
     assert rows[0]["condition_id"] == "cond-1"
+
+
+def test_signals_include_market_metadata(tmp_path: Path) -> None:
+    markets_csv = tmp_path / "markets.csv"
+    raw_payload = {
+        "conditionId": "cond-1",
+        "acceptingOrders": True,
+        "enableOrderBook": True,
+        "active": True,
+        "closed": False,
+        "liquidity": "123.45",
+        "eventStartTime": "2099-01-01T00:00:00Z",
+        "endDate": "2100-01-01T00:00:00Z",
+    }
+    with markets_csv.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "market_id",
+                "question",
+                "outcomes",
+                "lifecycle_state",
+                "raw",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "market_id": "mkt-1",
+                "question": "Test market?",
+                "outcomes": "[\"Yes\",\"No\"]",
+                "lifecycle_state": "OPEN_TRADABLE",
+                "raw": json.dumps(raw_payload),
+            }
+        )
+
+    market_index = build_market_index(markets_csv)
+    book = OrderBook(
+        token_id="token-up",
+        market="cond-1",
+        timestamp_ms=1000,
+        bids=[OrderLevel(price=Decimal("0.40"), size=Decimal("10"))],
+        asks=[OrderLevel(price=Decimal("0.60"), size=Decimal("10"))],
+        tick_size=Decimal("0.01"),
+        min_order_size=Decimal("1"),
+        hash=None,
+    )
+    pairs = [
+        TradablePair(
+            condition_id="cond-1",
+            token_a_id="token-up",
+            token_b_id="token-down",
+            outcome_a="Yes",
+            outcome_b="No",
+            gamma_market_id="mkt-1",
+            question="Test market?",
+        )
+    ]
+    out_dir = tmp_path / "signals"
+    record_paired_quotes(
+        pairs,
+        out_dir=out_dir,
+        interval_seconds=0,
+        max_iters=1,
+        client=_FakeClient(book),
+        market_index=market_index,
+    )
+
+    signals_path = out_dir / "signals.csv"
+    assert signals_path.exists()
+    with signals_path.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows
+    row = rows[0]
+    assert row["condition_id"] == "cond-1"
+    assert row["gamma_market_id"] == "mkt-1"
+    assert row["question"] == "Test market?"
+    assert row["liquidity"] == "123.45"
+    assert row["accepting_orders"] == "true"
+    assert row["enable_order_book"] == "true"

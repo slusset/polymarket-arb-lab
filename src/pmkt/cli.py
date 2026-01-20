@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pmkt.adapters.storage_csv import CsvUniverseWriter
-from pmkt.clob.paired_recorder import load_tradable_pairs, record_paired_quotes
+from pmkt.clob.paired_recorder import build_market_index, load_tradable_pairs, record_paired_quotes
 from pmkt.domain.ports import UniverseSnapshot
 from pmkt.gamma.client import GammaClient
 from pmkt.gamma.normalize import parse_events, parse_tokens
@@ -113,11 +113,13 @@ def main(argv: list[str] | None = None) -> None:
         out_dir = Path(args.out) if args.out else Path("data") / "marketdata" / timestamp
         markets_csv = Path(args.markets_csv)
         pairs = load_tradable_pairs(markets_csv)
+        market_index = build_market_index(markets_csv)
         record_paired_quotes(
             pairs,
             out_dir=out_dir,
             interval_seconds=args.interval,
             max_iters=args.iters,
+            market_index=market_index,
         )
         print(f"Recorded paired quotes to {out_dir} (pairs={len(pairs)})")
         return

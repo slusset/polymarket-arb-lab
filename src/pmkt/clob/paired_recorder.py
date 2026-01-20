@@ -59,12 +59,52 @@ def load_tradable_pairs(markets_csv: Path) -> list[TradablePair]:
     return pairs
 
 
+def build_market_index(markets_csv: Path) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    with markets_csv.open(encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            condition_id = _extract_condition_id(row)
+            if not condition_id:
+                continue
+            raw_payload = _parse_json_value(row.get("raw"))
+            raw_payload = raw_payload if isinstance(raw_payload, dict) else {}
+            index[condition_id] = {
+                "gamma_market_id": row.get("market_id") or "",
+                "question": row.get("question") or "",
+                "outcomes": row.get("outcomes") or "",
+                "lifecycle_state": row.get("lifecycle_state") or "",
+                "active": _coerce_bool(raw_payload.get("active"), row.get("active")),
+                "closed": _coerce_bool(raw_payload.get("closed"), row.get("closed")),
+                "enable_order_book": _coerce_bool(
+                    raw_payload.get("enableOrderBook"), row.get("enable_order_book")
+                ),
+                "accepting_orders": _coerce_bool(
+                    raw_payload.get("acceptingOrders"), row.get("accepting_orders")
+                ),
+                "liquidity": _coerce_number(
+                    raw_payload.get("liquidity") or raw_payload.get("liquidityNum"),
+                    row.get("liquidity"),
+                ),
+                "event_start_time": raw_payload.get("eventStartTime")
+                or raw_payload.get("event_start_time")
+                or row.get("event_start_time")
+                or "",
+                "end_date": raw_payload.get("endDate")
+                or raw_payload.get("end_date")
+                or row.get("end_date")
+                or "",
+            }
+    return index
+
+
 def record_paired_quotes(
     pairs: Iterable[TradablePair],
     out_dir: Path,
     interval_seconds: float = 2.0,
     max_iters: int | None = None,
     client: ClobClient | None = None,
+    market_index: dict[str, dict[str, Any]] | None = None,
     mid_sum_threshold: Decimal = MID_SUM_THRESHOLD,
     spread_sum_threshold: Decimal = SPREAD_SUM_THRESHOLD,
 ) -> None:
@@ -83,6 +123,8 @@ def record_paired_quotes(
                 _append_snapshot(quotes_path, snapshot)
                 signals = _signals_for_snapshot(
                     snapshot,
+                    pair=pair,
+                    market_meta=(market_index or {}).get(pair.condition_id, {}),
                     mid_sum_threshold=mid_sum_threshold,
                     spread_sum_threshold=spread_sum_threshold,
                 )
@@ -164,6 +206,8 @@ def _snapshot_row(snapshot: PairedBookSnapshot) -> dict[str, Any]:
 
 def _signals_for_snapshot(
     snapshot: PairedBookSnapshot,
+    pair: TradablePair,
+    market_meta: dict[str, Any],
     mid_sum_threshold: Decimal,
     spread_sum_threshold: Decimal,
 ) -> list[dict[str, Any]]:
@@ -176,12 +220,10 @@ def _signals_for_snapshot(
                 snapshot.condition_id,
                 "MID_SUM_DRIFT",
                 snapshot.mid_sum,
-                {
+                pair=pair,
+                market_meta=market_meta,
+                details={
                     "threshold": str(mid_sum_threshold),
-                    "token_a_id": snapshot.token_a_id,
-                    "token_b_id": snapshot.token_b_id,
-                    "outcome_a": snapshot.outcome_a,
-                    "outcome_b": snapshot.outcome_b,
                 },
             )
         )
@@ -192,12 +234,10 @@ def _signals_for_snapshot(
                 snapshot.condition_id,
                 "SPREAD_SUM_WIDE",
                 snapshot.spread_sum,
-                {
+                pair=pair,
+                market_meta=market_meta,
+                details={
                     "threshold": str(spread_sum_threshold),
-                    "token_a_id": snapshot.token_a_id,
-                    "token_b_id": snapshot.token_b_id,
-                    "outcome_a": snapshot.outcome_a,
-                    "outcome_b": snapshot.outcome_b,
                 },
             )
         )
@@ -208,12 +248,9 @@ def _signals_for_snapshot(
                 snapshot.condition_id,
                 "BUY_BOTH_UNDER_1",
                 snapshot.buy_both_cost,
-                {
-                    "token_a_id": snapshot.token_a_id,
-                    "token_b_id": snapshot.token_b_id,
-                    "outcome_a": snapshot.outcome_a,
-                    "outcome_b": snapshot.outcome_b,
-                },
+                pair=pair,
+                market_meta=market_meta,
+                details={},
             )
         )
     if snapshot.sell_both_proceeds >= ONE_DOLLAR:
@@ -223,27 +260,47 @@ def _signals_for_snapshot(
                 snapshot.condition_id,
                 "SELL_BOTH_OVER_1",
                 snapshot.sell_both_proceeds,
-                {
-                    "token_a_id": snapshot.token_a_id,
-                    "token_b_id": snapshot.token_b_id,
-                    "outcome_a": snapshot.outcome_a,
-                    "outcome_b": snapshot.outcome_b,
-                },
+                pair=pair,
+                market_meta=market_meta,
+                details={},
             )
         )
     return signals
 
 
 def _signal_row(
-    ts_iso: str, condition_id: str, signal_type: str, value: Decimal, details: dict[str, Any]
+    ts_iso: str,
+    condition_id: str,
+    signal_type: str,
+    value: Decimal,
+    *,
+    pair: TradablePair,
+    market_meta: dict[str, Any],
+    details: dict[str, Any],
 ) -> dict[str, Any]:
-    return {
+    row = {
         "ts_iso": ts_iso,
         "condition_id": condition_id,
+        "gamma_market_id": market_meta.get("gamma_market_id", ""),
+        "question": market_meta.get("question", ""),
+        "outcomes": market_meta.get("outcomes", ""),
+        "token_a_id": pair.token_a_id,
+        "outcome_a": pair.outcome_a,
+        "token_b_id": pair.token_b_id,
+        "outcome_b": pair.outcome_b,
+        "lifecycle_state": market_meta.get("lifecycle_state", ""),
+        "active": market_meta.get("active", ""),
+        "closed": market_meta.get("closed", ""),
+        "enable_order_book": market_meta.get("enable_order_book", ""),
+        "accepting_orders": market_meta.get("accepting_orders", ""),
+        "liquidity": market_meta.get("liquidity", ""),
+        "event_start_time": market_meta.get("event_start_time", ""),
+        "end_date": market_meta.get("end_date", ""),
         "signal_type": signal_type,
-        "value": str(value),
+        "signal_value": str(value),
         "details_json": json.dumps(details, ensure_ascii=True, sort_keys=True),
     }
+    return row
 
 
 def _parse_json_list(raw_value: str | None) -> list[Any]:
@@ -331,3 +388,26 @@ def _resolve_outcome_pair(
         outcome_tokens[label_a],
         outcome_tokens[label_b],
     )
+
+
+def _coerce_bool(primary: Any, fallback: Any) -> str:
+    value = primary if primary is not None else fallback
+    if value is None or value == "":
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "false"}:
+            return text
+    return str(value)
+
+
+def _coerce_number(primary: Any, fallback: Any) -> str:
+    value = primary if primary is not None else fallback
+    if value is None or value == "":
+        return ""
+    try:
+        return str(Decimal(str(value)))
+    except Exception:  # noqa: BLE001 - keep best-effort formatting
+        return str(value)
