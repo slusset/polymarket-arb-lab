@@ -212,4 +212,5 @@ data/market.db
 data/report.md
 data/*.json
 data/snapshots/**
+data/marketdata/**
 repomix-output.md
