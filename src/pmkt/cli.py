@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pmkt.adapters.storage_csv import CsvUniverseWriter
+from pmkt.clob.paired_recorder import load_tradable_pairs, record_paired_quotes
 from pmkt.domain.ports import UniverseSnapshot
 from pmkt.gamma.client import GammaClient
 from pmkt.gamma.normalize import parse_events, parse_tokens
@@ -49,6 +50,28 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override global log level",
     )
+
+    paired_cmd = sub.add_parser("paired-quotes", help="Record paired CLOB quotes to CSV")
+    paired_cmd.add_argument(
+        "--markets-csv",
+        type=str,
+        default="data/exports/markets.csv",
+        help="Path to exported markets.csv",
+    )
+    paired_cmd.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Output directory (default: data/marketdata/<UTC_TIMESTAMP>)",
+    )
+    paired_cmd.add_argument("--interval", type=float, default=2.0)
+    paired_cmd.add_argument("--iters", type=int, default=None)
+    paired_cmd.add_argument(
+        "--log-level",
+        choices=("DEBUG", "INFO", "WARNING"),
+        default=None,
+        help="Override global log level",
+    )
     return parser
 
 
@@ -81,6 +104,22 @@ def main(argv: list[str] | None = None) -> None:
             f"Exported snapshot to {out_dir} "
             f"(events={len(events)}, markets={len(markets)}, tokens={len(tokens)})"
         )
+        return
+
+    if args.command == "paired-quotes":
+        if args.log_level:
+            _setup_logging(args.log_level)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        out_dir = Path(args.out) if args.out else Path("data") / "marketdata" / timestamp
+        markets_csv = Path(args.markets_csv)
+        pairs = load_tradable_pairs(markets_csv)
+        record_paired_quotes(
+            pairs,
+            out_dir=out_dir,
+            interval_seconds=args.interval,
+            max_iters=args.iters,
+        )
+        print(f"Recorded paired quotes to {out_dir} (pairs={len(pairs)})")
         return
 
 
