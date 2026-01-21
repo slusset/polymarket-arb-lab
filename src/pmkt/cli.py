@@ -12,6 +12,7 @@ from pmkt.domain.ports import UniverseSnapshot
 from pmkt.gamma.client import GammaClient
 from pmkt.gamma.normalize import parse_events, parse_tokens
 
+DEFAULT_EXPORT_LIMIT = 1000
 
 def _setup_logging(level: str) -> None:
     logging.basicConfig(
@@ -38,12 +39,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output directory (default: data/snapshots/<UTC_TIMESTAMP>)",
     )
     export_cmd.add_argument(
+        "--event-set",
+        choices=("open", "closed", "all"),
+        default="open",
+        help="Event subset to export (default: open)",
+    )
+    export_cmd.add_argument(
         "--input",
         type=str,
         default=None,
         help="Optional path to a local events JSON file",
     )
-    export_cmd.add_argument("--limit", type=int, default=None)
+    export_cmd.add_argument("--limit", type=int, default=DEFAULT_EXPORT_LIMIT)
+    export_cmd.add_argument(
+        "--order",
+        choices=("id", "volume", "liquidity", "createdAt"),
+        default="id",
+    )
+    export_cmd.add_argument("--ascending", action="store_true", default=False)
     export_cmd.add_argument(
         "--log-level",
         choices=("DEBUG", "INFO", "WARNING"),
@@ -92,9 +105,21 @@ def main(argv: list[str] | None = None) -> None:
         else:
             gamma_client = GammaClient()
             try:
-                raw_events = gamma_client.fetch_events(limit=args.limit)
+                closed_param = None
+                if args.event_set == "open":
+                    closed_param = False
+                elif args.event_set == "closed":
+                    closed_param = True
+                raw_events = gamma_client.fetch_events(
+                    closed=closed_param,
+                    limit=args.limit,
+                    order=args.order,
+                    ascending=args.ascending,
+                )
             finally:
                 gamma_client.close()
+            if args.event_set == "open" and isinstance(raw_events, list):
+                raw_events = _filter_future_events(raw_events)
         events = parse_events(raw_events)
         markets = [market for event in events for market in event.markets]
         tokens = parse_tokens(markets)
@@ -127,3 +152,38 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def _filter_future_events(raw_events: list[dict[str, object]]) -> list[dict[str, object]]:
+    now = datetime.now(timezone.utc)
+    filtered: list[dict[str, object]] = []
+    for event in raw_events:
+        if not isinstance(event, dict):
+            continue
+        if event.get("closed") is True:
+            continue
+        end_date = event.get("endDate") or event.get("end_date")
+        parsed_end = _parse_iso_timestamp(end_date)
+        if parsed_end is None:
+            if event.get("active") is True:
+                filtered.append(event)
+            continue
+        if parsed_end >= now:
+            filtered.append(event)
+    return filtered
+
+
+def _parse_iso_timestamp(value: object) -> datetime | None:
+    if not value:
+        return None
+    if not isinstance(value, str):
+        value = str(value)
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None

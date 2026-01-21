@@ -1,6 +1,6 @@
-# Polymarket Binary Arb Explorer
+# Polymarket Market Data Explorer
 
-Read-only research tool for polling public Polymarket data, detecting buy-both-sides arbitrage conditions on binary YES/NO markets, and producing a daily ranked report. No order placement, no auth, no secrets.
+Read-only research tool for exporting Polymarket Gamma market data, normalizing it into CSV snapshots, and recording paired CLOB quotes with simple signals. No order placement, no auth, no secrets.
 
 ## Setup
 
@@ -16,46 +16,17 @@ If you do not have `uv`, use `poetry` (create a virtualenv and install the proje
 ## Example commands
 
 ```bash
-uv run pmarb scan --duration-min 1 --max-markets 50 --edge-threshold 0.01 --log-level INFO
-uv run pmarb scan --offline-fixture data/fixtures/sample_fixture.json --duration-min 1
-uv run pmarb report --db-path data/market.db --out-path data/report.md
-uv run pmarb inspect --limit 20
+uv run pmarb export --input data/polymarket_events_10.json --out data/snapshots/test-run
+uv run pmarb paired-quotes --markets-csv data/snapshots/test-run/markets.csv --iters 1
 ```
 
-## Configuration
+## CLI details
 
-Environment variables (defaults are public endpoints):
-
-- `PM_MARKETS_URL` (default `https://gamma-api.polymarket.com/markets`)
-- `PM_ORDERBOOK_URL` (default `https://clob.polymarket.com/book`)
-- `PM_TIMEOUT_S` (default `10.0`)
-- `PM_MIN_INTERVAL_S` (default `0.25`)
-- `PM_MAX_RETRIES` (default `3`)
-- `PM_DB_PATH` (default `data/market.db`)
-- `PM_START_DATE_MIN` (optional ISO date or datetime)
-- `PM_END_DATE_MIN` (optional ISO date or datetime)
-
-## Top-of-book edge (and why it can be misleading)
-
-This project computes a simple edge estimate:
-
-```
-edge = 1 - (ask_yes + ask_no) - fees - overhead
-```
-
-Using the best ask on each side is fast and reproducible, but it can be misleading because:
-
-- The best asks may be too small to fill the target size.
-- Deeper orderbook levels can widen the true cost for larger quantities.
-- Latency, partial fills, and cancellations can erase the edge before execution.
-- Fees can vary by venue rules; this tool uses a configurable flat model.
-
-Treat the output as research signals only, not executable guarantees.
-
-## SQLite notes
-
-The scanner enables WAL mode and a busy timeout to reduce lock contention with IDEs. If you keep
-`data/market.db` open in a DB browser, inserts will retry briefly and continue rather than hanging.
+- `pmarb export` downloads Gamma events (or reads a local JSON fixture) and writes normalized CSVs:
+  - `events.csv`, `markets.csv`, `tokens.csv`, plus `watchlist.csv` and `watchlist_future.csv`
+- By default it exports the open/future event set. Use `--event-set closed` to export closed events.
+- `pmarb paired-quotes` reads `markets.csv`, loads OPEN_TRADABLE pairs, fetches CLOB `/book`,
+  and writes `paired_quotes.csv` and `signals.csv` with enriched metadata.
 
 ## Research-only disclaimer
 
